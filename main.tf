@@ -36,11 +36,6 @@ resource "aws_instance" "simpleserver" {
   key_name               = aws_key_pair.mykeypair.key_name
   vpc_security_group_ids = [aws_security_group.simpleserver.id]
 
-  #   provisioner "remote-exec" {
-  #     inline = [
-  #       "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u {var.user} -i '${self.public_ip},' --private-key ${var.ssh_private_key} playbook.yml"
-  #     ]
-  #   }
   provisioner "file" {
     source      = "./templates/script.tpl"
     destination = "/tmp/script.sh"
