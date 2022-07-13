@@ -25,7 +25,7 @@ locals {
     alias    = "Dev"
     ec2      = "public"
   }
-  instance_type = "t2.micro"
+  instance_type = "t2.medium"
 }
 
 #%%%%%% server #%%%%%%
@@ -41,7 +41,7 @@ resource "aws_instance" "simpleserver" {
     destination = "/tmp/script.sh"
   }
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ${var.user} -i '${self.public_ip},' --private-key ${var.ssh_private_key} playbook.yml -v"
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ${var.user} -i '${self.public_ip},' --private-key ${var.ssh_private_key} playbook-jenkins.yml -vv"
   }
   connection {
     user        = var.user
@@ -49,7 +49,7 @@ resource "aws_instance" "simpleserver" {
     type        = "ssh"
     private_key = file(var.ssh_private_key)
   }
-  tags = merge(local.common_tags, { Name = "simple-server", Application = "public" })
+  tags = merge(local.common_tags, { Name = "ansibleintegrationserver", Application = "public" })
 }
 
 resource "aws_key_pair" "mykeypair" {
@@ -57,6 +57,18 @@ resource "aws_key_pair" "mykeypair" {
   public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCvTdfcR/qCrnoEkcsW0XNoRiMf9fEWtIg0EN6HS3ND4QWE2GTCuIqmxAtYLPek0u++BwNpRfTSBhqVXHbv0ccWyG5uCOxiauZsAfn5PN66mCbc7aWQXIQuEqT+25xg88SzuA2nPwg2byf6l+kH3VSZv8TY5V4xrIvOnksBDvHtulblSRm7UdmNqtVIkoMXV1eGiasyvkwqg6WSqvVkW5aAhmvCcTDLzwf9Gjif8cIXejgzQnYj7CFC/0tCZ5jEewXIrrppuaVtsed+o/0NpHzq/SY8y7E0MrNw5NarxNa+5RwTiNSOEPC0n+VIrohgr6XkAUn4LwRKhIanPWvfYC6bPgd5sS737LJAGNe8QqX9K/0Bqq7H3RS/M0mQ/qLFcpLxX/8E4ecSPYfar7LJOOu6JELlexmOuNMDXZMfcOScMr9hByvqHx257rZdt68UGJh+Hz9ql8grgarAYlVqtQF8gtEfagf9zdFMSlTCXUNRleLj5QWgRYqUlZjdGCkwVEM= lbena@LAPTOP-QB0DU4OG"
 }
 
+# #%%%%%% volume #%%%%%%
+# resource "aws_ebs_volume" "ebsvolume" {
+#   availability_zone = "us-east-1a"
+#   size              = 200
+#   tags              = merge(local.common_tags, { Name = "ebsvol", Application = "public" })
+# }
+# resource "aws_volume_attachment" "ebsvolumeattach" {
+#   device_name = "/dev/sdh"
+#   volume_id   = aws_ebs_volume.ebsvolume.id
+#   instance_id = aws_instance.simpleserver.id
+#   depends_on = [aws_ebs_volume.ebsvolume, aws_instance.simpleserver]
+# }
 
 #%%%%%% VPC #%%%%%%
 resource "aws_vpc" "main" {

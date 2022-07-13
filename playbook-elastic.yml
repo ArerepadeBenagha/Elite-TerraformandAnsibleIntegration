@@ -1,0 +1,10 @@
+---
+- hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - ansible-elastic-cloud-enterprise
+  vars:
+    ece_primary: true
+    device_name: xvdh
+    data_dir: /data
