@@ -1,0 +1,7 @@
+*.terraform.*
+*.pub*
+simpleserverkey
+*.tfstate*
+*.pem*
+*.zip*
+*aws*
