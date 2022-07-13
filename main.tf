@@ -1,4 +1,34 @@
-###########------ simple Server -----########
+#%%%%%% locals #%%%%%%
+locals {
+  # Common tags to be assigned to all resources
+  common_tags = {
+    Service     = "Elite Technology Services"
+    Owner       = "EliteInfra"
+    Department  = "IT"
+    Company     = "EliteSolutions LLC"
+    ManagedWith = "Terraform"
+    Casecode    = "es20"
+  }
+  # network tags to be assigned to all resources
+  network = {
+    Service     = "Elite Technology Services"
+    Owner       = "EliteInfra"
+    Department  = "IT"
+    Company     = "EliteSolutions LLC"
+    ManagedWith = "Terraform"
+    Casecode    = "es20"
+  }
+  # application tags to be assigned to all resources
+  application = {
+    app_name = "publicapp"
+    location = "us-east-2"
+    alias    = "Dev"
+    ec2      = "public"
+  }
+  instance_type = "t2.micro"
+}
+
+#%%%%%% server #%%%%%%
 resource "aws_instance" "simpleserver" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = local.instance_type
@@ -101,4 +131,63 @@ resource "aws_security_group" "simpleserver" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   tags = merge(local.common_tags, { Name = "simpleservergroup" })
+}
+
+#%%%%%% output #%%%%%%
+output "publicip" {
+  value = aws_instance.simpleserver.public_ip
+}
+
+#%%%%%% data lookup #%%%%%%
+data "aws_ami" "ubuntu" {
+  most_recent = true
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+  owners = ["099720109477"] # Canonical
+}
+
+data "cloudinit_config" "hostip" {
+  gzip          = false
+  base64_encode = false
+
+  part {
+    content_type = "text/x-shellscript"
+    filename     = "scripts"
+    content = templatefile("./templates/script.tpl",
+      {
+        hostip = aws_instance.simpleserver.public_ip
+    })
+  }
+}
+
+#%%%%%% variables #%%%%%%
+variable "region" {
+  type    = string
+  default = "us-east-1"
+}
+
+variable "profile" {
+  type    = string
+  default = "default"
+}
+
+variable "ssh_private_key" {
+  type    = string
+  default = "/home/devopslab/.ssh/simpleserverkey"
+}
+
+variable "user" {
+  type    = string
+  default = "ubuntu"
+}
+
+variable "path" {
+  type    = string
+  default = "/root/.ssh/known_hosts"
 }
