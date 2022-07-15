@@ -37,11 +37,11 @@ resource "aws_instance" "simpleserver" {
   vpc_security_group_ids = [aws_security_group.simpleserver.id]
 
   provisioner "file" {
-    source      = "./templates/script.tpl"
+    source      = "./templates/script.sh"
     destination = "/tmp/script.sh"
   }
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ${var.user} -i '${self.public_ip},' --private-key ${var.ssh_private_key} playbook-jenkins.yml -vv"
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -u ${var.user} -i '${self.public_ip},' --private-key ${var.ssh_private_key} playbook-nginx.yml -vv"
   }
   connection {
     user        = var.user
@@ -88,6 +88,13 @@ resource "aws_subnet" "mainpublic" {
   availability_zone       = "us-east-1a"
   tags                    = merge(local.common_tags, { Name = "mainpublic", Application = "public" })
 }
+resource "aws_subnet" "mainpublic2" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.3.0/24"
+  map_public_ip_on_launch = "true"
+  availability_zone       = "us-east-1c"
+  tags                    = merge(local.common_tags, { Name = "mainpublic", Application = "public" })
+}
 
 resource "aws_subnet" "mainprivate" {
   vpc_id                  = aws_vpc.main.id
@@ -123,13 +130,20 @@ resource "aws_route_table_association" "mainpublic" {
 #%%%%%% Security Groups #%%%%%%
 resource "aws_security_group" "simpleserver" {
   vpc_id      = aws_vpc.main.id
-  name        = "public web allow"
+  name        = "simpleserver-sg"
   description = "security group for ubuntuserver"
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["70.114.65.185/32"]
+    # security_groups = [aws_security_group.main-alb.id]
+  }
+    ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    security_groups = [aws_security_group.main-alb.id]
   }
   egress {
     from_port   = 0
@@ -138,6 +152,32 @@ resource "aws_security_group" "simpleserver" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   tags = merge(local.common_tags, { Name = "simpleservergroup" })
+}
+resource "aws_security_group" "main-alb" {
+  vpc_id      = aws_vpc.main.id
+  name        = "public-web-allow"
+  description = "security group for ALB"
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = merge(local.common_tags,
+  { Name = "Alb security group" })
 }
 
 #%%%%%% output #%%%%%%
@@ -166,9 +206,10 @@ data "cloudinit_config" "hostip" {
   part {
     content_type = "text/x-shellscript"
     filename     = "scripts"
-    content = templatefile("./templates/script.tpl",
+    content = templatefile("./templates/script.sh",
       {
-        hostip = aws_instance.simpleserver.public_ip
+        hostip   = aws_instance.simpleserver.public_ip
+        key_path = var.key_path
     })
   }
 }
@@ -197,4 +238,9 @@ variable "user" {
 variable "path" {
   type    = string
   default = "/root/.ssh/known_hosts"
+}
+
+variable "key_path" {
+  type    = string
+  default = "/root/.ssh/known_hosts/simpleserverkey"
 }
