@@ -1,4 +1,5 @@
 #!/bin/bash
+exec > >(tee /var/log/userdata.log) 2>&1
 
 path="{key_path}"
 
